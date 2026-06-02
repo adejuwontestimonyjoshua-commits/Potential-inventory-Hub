@@ -9,6 +9,7 @@ import ProductsPage from "@/pages/ProductsPage";
 import ProductDetailPage from "@/pages/ProductDetailPage";
 import ReportsPage from "@/pages/ReportsPage";
 import ReorderPage from "@/pages/ReorderPage";
+import AnalyticsPage from "@/pages/AnalyticsPage";
 import { CommandPalette } from "@/components/CommandPalette";
 import { useEffect } from "react";
 
@@ -48,6 +49,9 @@ function Router() {
       </Route>
       <Route path="/reorder">
         <ProtectedRoute component={ReorderPage} />
+      </Route>
+      <Route path="/analytics">
+        <ProtectedRoute component={AnalyticsPage} />
       </Route>
       <Route path="/product/:id">
         {params => <ProtectedRoute component={ProductDetailPage} id={params.id} />}

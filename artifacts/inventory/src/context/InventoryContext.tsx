@@ -66,16 +66,37 @@ const seedProducts: Product[] = [
   { id: "PRD-020", name: "L298N Motor Driver", category: "Other", unitPrice: 5.00, quantity: 11, minThreshold: 5, storageLocation: "Shelf G-2", lastUpdated: new Date().toISOString() }
 ];
 
-const seedActivityLog: ActivityLog[] = [
-  { id: "ACT-001", action: "added", productId: "PRD-001", productName: "Arduino Uno", timestamp: new Date(Date.now() - 10000000).toISOString(), performedBy: "Admin" },
-  { id: "ACT-002", action: "added", productId: "PRD-002", productName: "Arduino Nano", timestamp: new Date(Date.now() - 9000000).toISOString(), performedBy: "Admin" },
-  { id: "ACT-003", action: "added", productId: "PRD-003", productName: "ESP32", timestamp: new Date(Date.now() - 8000000).toISOString(), performedBy: "Admin" },
-  { id: "ACT-004", action: "added", productId: "PRD-004", productName: "ESP8266", timestamp: new Date(Date.now() - 7000000).toISOString(), performedBy: "Admin" },
-  { id: "ACT-005", action: "added", productId: "PRD-005", productName: "AI Camera Module", timestamp: new Date(Date.now() - 6000000).toISOString(), performedBy: "Admin" },
-  { id: "ACT-006", action: "added", productId: "PRD-006", productName: "Breadboard", timestamp: new Date(Date.now() - 5000000).toISOString(), performedBy: "Admin" },
-  { id: "ACT-007", action: "added", productId: "PRD-007", productName: "Mini Breadboard", timestamp: new Date(Date.now() - 4000000).toISOString(), performedBy: "Admin" },
-  { id: "ACT-008", action: "added", productId: "PRD-008", productName: "Vero Board", timestamp: new Date(Date.now() - 3000000).toISOString(), performedBy: "Admin" },
-];
+const seedActivityLog: ActivityLog[] = Array.from({ length: 40 }).map((_, i) => {
+  const isAdded = i >= 32;
+  const isEdited = i >= 24 && i < 32;
+  
+  let action: "added" | "edited" | "adjusted" = "adjusted";
+  if (isAdded) action = "added";
+  else if (isEdited) action = "edited";
+
+  const products = [
+    { id: "PRD-001", name: "Arduino Uno" },
+    { id: "PRD-003", name: "ESP32" },
+    { id: "PRD-006", name: "Breadboard" },
+    { id: "PRD-009", name: "Male-to-Male Jumper Wires" },
+    { id: "PRD-002", name: "Arduino Nano" },
+    { id: "PRD-012", name: "SG90 Servo Motor" },
+    { id: "PRD-017", name: "16x2 LCD Display" },
+    { id: "PRD-005", name: "AI Camera Module" }
+  ];
+
+  const product = isAdded ? products[i - 32] : products[i % products.length];
+  const offsetMs = isAdded ? 30 * 24 * 60 * 60 * 1000 : Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000);
+
+  return {
+    id: `ACT-s${String(i).padStart(3, "0")}`,
+    action,
+    productId: product.id,
+    productName: product.name,
+    timestamp: new Date(Date.now() - offsetMs).toISOString(),
+    performedBy: i % 3 === 0 ? "Admin User" : "Lab Staff",
+  };
+}).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 

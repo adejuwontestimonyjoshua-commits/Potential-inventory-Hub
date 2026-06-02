@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Package, FileText, Cpu, ShoppingCart, Search, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, FileText, Cpu, ShoppingCart, Search, LogOut, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInventory } from "@/context/InventoryContext";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ export function Sidebar() {
     { href: "/products", label: "Inventory", icon: Package, badge: criticalCount > 0 ? criticalCount : null },
     { href: "/reorder", label: "Reorder", icon: ShoppingCart, badge: criticalCount > 0 ? criticalCount : null },
     { href: "/reports", label: "Reports", icon: FileText },
+    { href: "/analytics", label: "Analytics", icon: BarChart2 },
   ];
 
   const handleLogout = () => {
