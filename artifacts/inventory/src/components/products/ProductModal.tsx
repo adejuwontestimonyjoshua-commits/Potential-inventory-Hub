@@ -130,7 +130,7 @@ export function ProductModal({ open, onOpenChange, product }: ProductModalProps)
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-product-category">
                         <SelectValue placeholder="Select a category" />
