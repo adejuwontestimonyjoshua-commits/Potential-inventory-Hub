@@ -14,7 +14,7 @@ export interface Product {
 
 export interface ActivityLog {
   id: string;
-  action: "added" | "edited" | "deleted";
+  action: "added" | "edited" | "deleted" | "adjusted";
   productId: string;
   productName: string;
   timestamp: string;
@@ -33,11 +33,14 @@ interface InventoryContextType {
   products: Product[];
   activityLog: ActivityLog[];
   currentUser: User | null;
+  reorderStatus: Record<string, boolean>;
   login: (email: string, role: Role, name: string) => void;
   logout: () => void;
   addProduct: (product: Omit<Product, "id" | "lastUpdated">) => void;
   updateProduct: (id: string, product: Partial<Omit<Product, "id" | "lastUpdated">>) => void;
   deleteProduct: (id: string) => void;
+  adjustQuantity: (id: string, delta: number) => void;
+  markReordered: (id: string, ordered: boolean) => void;
 }
 
 const seedProducts: Product[] = [
@@ -92,6 +95,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const [reorderStatus, setReorderStatus] = useState<Record<string, boolean>>(() => {
+    const s = localStorage.getItem("inventory_reorder");
+    return s ? JSON.parse(s) : {};
+  });
+
   useEffect(() => {
     localStorage.setItem("inventory_products", JSON.stringify(products));
   }, [products]);
@@ -108,6 +116,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    localStorage.setItem("inventory_reorder", JSON.stringify(reorderStatus));
+  }, [reorderStatus]);
+
   const login = (email: string, role: Role, name: string) => {
     setCurrentUser({ email, role, name });
   };
@@ -116,7 +128,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     setCurrentUser(null);
   };
 
-  const logActivity = (action: "added" | "edited" | "deleted", productId: string, productName: string) => {
+  const logActivity = (action: ActivityLog["action"], productId: string, productName: string) => {
     const newLog: ActivityLog = {
       id: `ACT-${Date.now()}`,
       action,
@@ -125,7 +137,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       timestamp: new Date().toISOString(),
       performedBy: currentUser?.name || "System"
     };
-    setActivityLog(prev => [newLog, ...prev].slice(0, 50)); // Keep last 50
+    setActivityLog(prev => [newLog, ...prev].slice(0, 50));
   };
 
   const addProduct = (product: Omit<Product, "id" | "lastUpdated">) => {
@@ -157,9 +169,25 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const adjustQuantity = (id: string, delta: number) => {
+    setProducts(prev => prev.map(p => {
+      if (p.id === id) {
+        const newQty = Math.max(0, p.quantity + delta);
+        const updated = { ...p, quantity: newQty, lastUpdated: new Date().toISOString() };
+        logActivity("adjusted", p.id, updated.name);
+        return updated;
+      }
+      return p;
+    }));
+  };
+
+  const markReordered = (id: string, ordered: boolean) => {
+    setReorderStatus(prev => ({ ...prev, [id]: ordered }));
+  };
+
   return (
     <InventoryContext.Provider value={{
-      products, activityLog, currentUser, login, logout, addProduct, updateProduct, deleteProduct
+      products, activityLog, currentUser, reorderStatus, login, logout, addProduct, updateProduct, deleteProduct, adjustQuantity, markReordered
     }}>
       {children}
     </InventoryContext.Provider>

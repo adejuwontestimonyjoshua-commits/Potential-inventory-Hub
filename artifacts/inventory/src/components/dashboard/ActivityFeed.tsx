@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useInventory } from "@/context/InventoryContext";
 import { formatDistanceToNow } from "date-fns";
-import { PlusCircle, Edit, Trash2 } from "lucide-react";
+import { PlusCircle, Edit, Trash2, MinusCircle } from "lucide-react";
 
 export function ActivityFeed() {
   const { activityLog } = useInventory();
@@ -11,8 +11,14 @@ export function ActivityFeed() {
       case "added": return <PlusCircle className="h-4 w-4 text-emerald-500" />;
       case "edited": return <Edit className="h-4 w-4 text-primary" />;
       case "deleted": return <Trash2 className="h-4 w-4 text-destructive" />;
+      case "adjusted": return <MinusCircle className="h-4 w-4 text-amber-500" />;
       default: return null;
     }
+  };
+
+  const getActionText = (action: string) => {
+    if (action === "adjusted") return "adjusted qty of";
+    return action;
   };
 
   return (
@@ -30,7 +36,7 @@ export function ActivityFeed() {
               <div className="flex-1 space-y-1">
                 <p className="text-sm">
                   <span className="font-medium text-foreground">{log.performedBy}</span>
-                  <span className="text-muted-foreground"> {log.action} </span>
+                  <span className="text-muted-foreground"> {getActionText(log.action)} </span>
                   <span className="font-medium text-foreground">{log.productName}</span>
                 </p>
                 <div className="flex items-center text-xs text-muted-foreground font-mono">

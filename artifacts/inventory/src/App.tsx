@@ -8,6 +8,8 @@ import DashboardPage from "@/pages/DashboardPage";
 import ProductsPage from "@/pages/ProductsPage";
 import ProductDetailPage from "@/pages/ProductDetailPage";
 import ReportsPage from "@/pages/ReportsPage";
+import ReorderPage from "@/pages/ReorderPage";
+import { CommandPalette } from "@/components/CommandPalette";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
@@ -44,6 +46,9 @@ function Router() {
       <Route path="/products">
         <ProtectedRoute component={ProductsPage} />
       </Route>
+      <Route path="/reorder">
+        <ProtectedRoute component={ReorderPage} />
+      </Route>
       <Route path="/product/:id">
         {params => <ProtectedRoute component={ProductDetailPage} id={params.id} />}
       </Route>
@@ -62,6 +67,7 @@ function App() {
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <Router />
         </WouterRouter>
+        <CommandPalette />
         <Toaster />
       </TooltipProvider>
     </InventoryProvider>

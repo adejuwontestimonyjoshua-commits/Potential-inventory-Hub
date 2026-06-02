@@ -25,7 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ProductModal } from "./ProductModal";
-import { Search, MoreVertical, Edit, Trash2, Eye } from "lucide-react";
+import { Search, MoreVertical, Edit, Trash2, Eye, ChevronUp, ChevronDown, ChevronsUpDown, Minus, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import {
@@ -52,13 +52,15 @@ const CATEGORIES = [
 ];
 
 export function ProductTable() {
-  const { products, currentUser, deleteProduct } = useInventory();
+  const { products, currentUser, deleteProduct, adjustQuantity } = useInventory();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   
+  const [sortKey, setSortKey] = useState<"name" | "quantity" | "unitPrice" | "lastUpdated" | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const filteredProducts = useMemo(() => {
@@ -69,6 +71,18 @@ export function ProductTable() {
       return matchesSearch && matchesCategory;
     });
   }, [products, search, category]);
+
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      if (!sortKey) return 0;
+      const mult = sortDir === "asc" ? 1 : -1;
+      if (sortKey === "name") return mult * a.name.localeCompare(b.name);
+      if (sortKey === "quantity") return mult * (a.quantity - b.quantity);
+      if (sortKey === "unitPrice") return mult * (a.unitPrice - b.unitPrice);
+      if (sortKey === "lastUpdated") return mult * (new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime());
+      return 0;
+    });
+  }, [filteredProducts, sortKey, sortDir]);
 
   const getStatusBadge = (quantity: number, threshold: number) => {
     if (quantity === 0 || quantity < threshold / 2) {
@@ -96,6 +110,31 @@ export function ProductTable() {
       setDeleteId(null);
     }
   };
+
+  const handleSort = (key: "name" | "quantity" | "unitPrice" | "lastUpdated") => {
+    if (sortKey === key) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const SortableHeader = ({ label, sortKey: key, className }: { label: string, sortKey: "name" | "quantity" | "unitPrice" | "lastUpdated", className?: string }) => (
+    <TableHead 
+      className={cn("cursor-pointer select-none hover:text-foreground transition-colors", className)} 
+      onClick={() => handleSort(key)}
+    >
+      <div className={cn("flex items-center gap-1", className?.includes("text-right") && "justify-end")}>
+        {label}
+        {sortKey === key ? (
+          sortDir === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+        ) : (
+          <ChevronsUpDown className="h-4 w-4 text-muted-foreground/50" />
+        )}
+      </div>
+    </TableHead>
+  );
 
   return (
     <div className="space-y-4">
@@ -135,17 +174,18 @@ export function ProductTable() {
           <TableHeader className="bg-muted/50">
             <TableRow>
               <TableHead className="w-[100px]">ID</TableHead>
-              <TableHead>Name</TableHead>
+              <SortableHeader label="Name" sortKey="name" />
               <TableHead>Category</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead className="text-right">Qty</TableHead>
+              <SortableHeader label="Price" sortKey="unitPrice" className="text-right" />
+              <SortableHeader label="Qty" sortKey="quantity" className="text-right" />
               <TableHead>Status</TableHead>
               <TableHead>Location</TableHead>
+              <SortableHeader label="Last Updated" sortKey="lastUpdated" />
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredProducts.map((product) => {
+            {sortedProducts.map((product) => {
               const isLowStock = product.quantity < product.minThreshold;
               return (
                 <TableRow 
@@ -159,11 +199,33 @@ export function ProductTable() {
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>{product.category}</TableCell>
                   <TableCell className="text-right font-mono">${product.unitPrice.toFixed(2)}</TableCell>
-                  <TableCell className={cn("text-right font-mono", isLowStock && "text-destructive font-bold")}>
-                    {product.quantity}
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        onClick={() => adjustQuantity(product.id, -1)}
+                        disabled={product.quantity === 0}
+                        data-testid={`button-decrement-${product.id}`}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className={cn("font-mono text-sm w-8 text-center", isLowStock && "text-destructive font-bold")}>
+                        {product.quantity}
+                      </span>
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-emerald-500"
+                        onClick={() => adjustQuantity(product.id, +1)}
+                        data-testid={`button-increment-${product.id}`}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(product.quantity, product.minThreshold)}</TableCell>
                   <TableCell className="text-muted-foreground">{product.storageLocation}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{format(new Date(product.lastUpdated), "MMM d, yy")}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -193,9 +255,9 @@ export function ProductTable() {
                 </TableRow>
               );
             })}
-            {filteredProducts.length === 0 && (
+            {sortedProducts.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                   No products found.
                 </TableCell>
               </TableRow>

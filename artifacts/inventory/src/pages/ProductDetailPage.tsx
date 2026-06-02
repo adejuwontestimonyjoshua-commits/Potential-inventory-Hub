@@ -1,5 +1,6 @@
 import { useInventory } from "@/context/InventoryContext";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { useParams, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +51,8 @@ export default function ProductDetailPage() {
   return (
     <AppLayout>
       <div className="space-y-6 max-w-5xl mx-auto">
+        <PageHeader crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Inventory", href: "/products" }, { label: product.name }]} />
+        
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/products">

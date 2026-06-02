@@ -1,5 +1,6 @@
 import { useInventory } from "@/context/InventoryContext";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileDown, FileText } from "lucide-react";
@@ -9,7 +10,7 @@ import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 
 export default function ReportsPage() {
-  const { products } = useInventory();
+  const { products, currentUser } = useInventory();
   const { toast } = useToast();
 
   const handleExportCSV = () => {
@@ -57,20 +58,66 @@ export default function ReportsPage() {
 
   const handleExportPDF = () => {
     try {
-      const doc = new jsPDF();
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
       
-      doc.setFontSize(20);
-      doc.text("Potential Innovation Hub", 14, 22);
+      // === COVER / HEADER BAND ===
+      doc.setFillColor(16, 20, 28);
+      doc.rect(0, 0, pageW, 45, "F");
       
-      doc.setFontSize(14);
-      doc.text("Inventory Status Report", 14, 32);
+      doc.setFillColor(6, 182, 212);
+      doc.rect(0, 0, pageW, 2, "F");
       
-      doc.setFontSize(10);
-      doc.text(`Generated: ${format(new Date(), 'PPpp')}`, 14, 40);
-      doc.text(`Total Items: ${products.length}`, 14, 46);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
+      doc.text("POTENTIAL INNOVATION HUB", 14, 16);
       
-      const totalValue = products.reduce((sum, p) => sum + (p.quantity * p.unitPrice), 0);
-      doc.text(`Total Value: $${totalValue.toFixed(2)}`, 14, 52);
+      doc.setTextColor(6, 182, 212);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text("INVENTORY STATUS REPORT", 14, 24);
+      
+      doc.setTextColor(148, 163, 184);
+      doc.setFontSize(8);
+      const generatedLine = `Generated: ${format(new Date(), "PPpp")}`;
+      const byLine = `Prepared by: ${currentUser?.name || "System"} (${currentUser?.role || ""})`;
+      doc.text(generatedLine, pageW - 14, 16, { align: "right" });
+      doc.text(byLine, pageW - 14, 22, { align: "right" });
+
+      const totalValue = products.reduce((s, p) => s + p.quantity * p.unitPrice, 0);
+      const lowStockCount = products.filter(p => p.quantity < p.minThreshold).length;
+      const totalUnits = products.reduce((s, p) => s + p.quantity, 0);
+      
+      const boxY = 53;
+      const boxW = (pageW - 28 - 9) / 4;
+      const summaryItems = [
+        { label: "Total SKUs", value: products.length.toString() },
+        { label: "Total Units", value: totalUnits.toLocaleString() },
+        { label: "Inventory Value", value: `$${totalValue.toFixed(2)}` },
+        { label: "Low Stock Items", value: lowStockCount.toString() },
+      ];
+      
+      summaryItems.forEach((item, i) => {
+        const x = 14 + i * (boxW + 3);
+        doc.setFillColor(22, 27, 38);
+        doc.roundedRect(x, boxY, boxW, 18, 1, 1, "F");
+        doc.setTextColor(100, 116, 139);
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.text(item.label.toUpperCase(), x + 4, boxY + 6);
+        doc.setTextColor(i === 3 && lowStockCount > 0 ? 239 : 226, i === 3 && lowStockCount > 0 ? 68 : 232, i === 3 && lowStockCount > 0 ? 68 : 240);
+        doc.setFontSize(13);
+        doc.setFont("helvetica", "bold");
+        doc.text(item.value, x + 4, boxY + 14);
+      });
+      
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.text("COMPLETE INVENTORY LISTING", 14, 80);
+      doc.setFillColor(30, 41, 59);
+      doc.rect(14, 82, pageW - 28, 0.3, "F");
 
       const tableData = products.map(p => [
         p.id,
@@ -78,34 +125,56 @@ export default function ReportsPage() {
         p.category,
         `$${p.unitPrice.toFixed(2)}`,
         p.quantity.toString(),
+        p.minThreshold.toString(),
         p.quantity < p.minThreshold ? "LOW" : "OK",
-        p.storageLocation
+        p.storageLocation,
+        `$${(p.quantity * p.unitPrice).toFixed(2)}`,
       ]);
 
       autoTable(doc, {
-        startY: 60,
-        head: [['ID', 'Name', 'Category', 'Price', 'Qty', 'Status', 'Location']],
+        startY: 84,
+        head: [["ID", "Name", "Category", "Price", "Qty", "Min", "Status", "Location", "Value"]],
         body: tableData,
-        theme: 'grid',
-        headStyles: { fillColor: [0, 163, 255] }, // Match primary color roughly
-        didParseCell: function(data) {
-          // Highlight low stock rows
-          if (data.row.section === 'body') {
-            const qty = parseInt(data.row.raw[4]);
-            const status = data.row.raw[5];
+        theme: "grid",
+        headStyles: {
+          fillColor: [16, 20, 28],
+          textColor: [6, 182, 212],
+          fontStyle: "bold",
+          fontSize: 7,
+          cellPadding: 3,
+        },
+        bodyStyles: {
+          fontSize: 7,
+          cellPadding: 2.5,
+          textColor: [51, 65, 85],
+        },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        didParseCell: (data) => {
+          if (data.section === "body") {
+            const rawRow = data.row.raw as string[];
+            const status = rawRow[6];
             if (status === "LOW") {
-              data.cell.styles.textColor = [220, 38, 38]; // Red text for low stock
+              if (data.column.index === 6) {
+                data.cell.styles.textColor = [220, 38, 38];
+                data.cell.styles.fontStyle = "bold";
+              } else {
+                data.cell.styles.textColor = [220, 38, 38];
+              }
             }
           }
-        }
+        },
+        didDrawPage: (data) => {
+          const pY = doc.internal.pageSize.getHeight() - 8;
+          doc.setFontSize(7);
+          doc.setTextColor(148, 163, 184);
+          doc.setFont("helvetica", "normal");
+          doc.text("CONFIDENTIAL — Potential Innovation Hub Internal Document", 14, pY);
+          doc.text(`Page ${data.pageNumber}`, pageW - 14, pY, { align: "right" });
+        },
       });
 
-      doc.save(`PIH_Inventory_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
-      
-      toast({
-        title: "Export Successful",
-        description: "PDF report has been downloaded.",
-      });
+      doc.save(`PIH_Inventory_Report_${format(new Date(), "yyyy-MM-dd")}.pdf`);
+      toast({ title: "Report Generated", description: "PDF inventory report downloaded." });
     } catch (error) {
       toast({
         title: "Export Failed",
@@ -118,6 +187,8 @@ export default function ReportsPage() {
   return (
     <AppLayout>
       <div className="space-y-6 max-w-4xl mx-auto">
+        <PageHeader crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Reports" }]} />
+        
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Reports & Exports</h1>
           <p className="text-sm text-muted-foreground mt-1">

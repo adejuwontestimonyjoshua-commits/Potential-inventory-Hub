@@ -1,22 +1,24 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { useInventory } from "@/context/InventoryContext";
-import { useLocation } from "wouter";
-import { LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { currentUser, logout } = useInventory();
-  const [, setLocation] = useLocation();
+  const { currentUser } = useInventory();
+  const [timeStr, setTimeStr] = useState("");
 
-  const handleLogout = () => {
-    logout();
-    setLocation("/login");
-  };
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setTimeStr(now.toLocaleTimeString("en-US", { hour12: false }));
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
@@ -28,14 +30,9 @@ export function AppLayout({ children }: AppLayoutProps) {
               {currentUser?.role === "admin" ? "ADMIN_ACCESS" : "STAFF_ACCESS"}
             </span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col items-end">
-              <span className="text-sm font-medium" data-testid="text-username">{currentUser?.name}</span>
-              <span className="text-xs text-muted-foreground" data-testid="text-userrole">{currentUser?.role}</span>
-            </div>
-            <Button variant="outline" size="icon" onClick={handleLogout} data-testid="button-logout">
-              <LogOut className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center gap-4 text-sm font-mono text-muted-foreground">
+            <span>{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+            <span className="text-foreground">{timeStr}</span>
           </div>
         </header>
         <main className="flex-1 p-6 overflow-auto">
