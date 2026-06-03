@@ -10,6 +10,7 @@ import ProductDetailPage from "@/pages/ProductDetailPage";
 import ReportsPage from "@/pages/ReportsPage";
 import ReorderPage from "@/pages/ReorderPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
+import SettingsPage from "@/pages/SettingsPage";
 import { CommandPalette } from "@/components/CommandPalette";
 import { useEffect } from "react";
 
@@ -58,6 +59,9 @@ function Router() {
       </Route>
       <Route path="/reports">
         <ProtectedRoute component={ReportsPage} />
+      </Route>
+      <Route path="/settings">
+        <ProtectedRoute component={SettingsPage} />
       </Route>
       <Route component={NotFound} />
     </Switch>
