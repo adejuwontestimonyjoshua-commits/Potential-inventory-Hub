@@ -1,17 +1,25 @@
 import { useInventory } from "@/context/InventoryContext";
+import type { Product } from "@/context/InventoryContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { LowStockAlerts } from "@/components/dashboard/LowStockAlerts";
+import StockAlerts from "@/components/StockAlerts";
 import { Package, DollarSign, AlertTriangle, Layers } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function DashboardPage() {
   const { products } = useInventory();
+  const [, setLocation] = useLocation();
 
   const totalProducts = products.length;
-  const totalValue = products.reduce((sum, p) => sum + (p.quantity * p.unitPrice), 0);
-  const lowStockCount = products.filter(p => p.quantity < p.minThreshold).length;
+  const totalValue = products.reduce((sum, p) => sum + p.quantity * p.unitPrice, 0);
+  const lowStockCount = products.filter((p) => p.quantity < p.minThreshold).length;
   const totalUnits = products.reduce((sum, p) => sum + p.quantity, 0);
+
+  const handleReorderClick = (product: Product) => {
+    setLocation(`/reorder`);
+  };
 
   return (
     <AppLayout>
@@ -22,6 +30,8 @@ export default function DashboardPage() {
             System overview and real-time inventory alerts.
           </p>
         </div>
+
+        <StockAlerts onReorderClick={handleReorderClick} />
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
