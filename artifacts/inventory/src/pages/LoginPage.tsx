@@ -17,7 +17,7 @@ export default function LoginPage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (email === "admin@potentialhub.com" && password === "admin123") {
+    if (email === "admin@potentialhub.com" && password === "Testimony") {
       login(email, "admin", "Admin User");
       setLocation("/dashboard");
     } else if (email === "staff@potentialhub.com" && password === "staff123") {

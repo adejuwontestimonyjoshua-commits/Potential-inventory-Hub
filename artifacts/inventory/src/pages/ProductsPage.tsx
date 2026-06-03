@@ -31,7 +31,7 @@ export default function ProductsPage() {
               <span className="text-muted-foreground ml-1">
                 You are signed in as <span className="font-mono">Staff</span>. Adding, editing, and deleting products requires an{" "}
                 <span className="font-medium text-foreground">Admin</span> account
-                {" "}(<span className="font-mono text-xs">admin@potentialhub.com / admin123</span>).
+                {" "}(<span className="font-mono text-xs">admin@potentialhub.com / Testimony</span>).
               </span>
             </div>
           </div>
