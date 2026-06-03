@@ -70,8 +70,8 @@ function App() {
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <Router />
+          <CommandPalette />
         </WouterRouter>
-        <CommandPalette />
         <Toaster />
       </TooltipProvider>
     </InventoryProvider>

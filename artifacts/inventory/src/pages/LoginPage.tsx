@@ -34,12 +34,11 @@ export default function LoginPage() {
 
   const fillDemo = (type: "admin" | "staff") => {
     if (type === "admin") {
-      setEmail("admin@potentialhub.com");
-      setPassword("admin123");
+      login("admin@potentialhub.com", "admin", "Admin User");
     } else {
-      setEmail("staff@potentialhub.com");
-      setPassword("staff123");
+      login("staff@potentialhub.com", "staff", "Lab Staff");
     }
+    setLocation("/dashboard");
   };
 
   return (
