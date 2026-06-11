@@ -1,44 +1,45 @@
 import { useState } from "react";
-import { useInventory } from "@/context/InventoryContext";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Cpu, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login } = useInventory();
+  const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (email === "admin@potentialhub.com" && password === "Testimony") {
-      login(email, "admin", "Admin User");
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
       setLocation("/dashboard");
-    } else if (email === "staff@potentialhub.com" && password === "staff123") {
-      login(email, "staff", "Lab Staff");
-      setLocation("/dashboard");
-    } else {
+    } catch (error: any) {
       toast({
         title: "Authentication Failed",
         description: "Invalid credentials provided.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const fillDemo = (type: "admin" | "staff") => {
     if (type === "admin") {
-      login("admin@potentialhub.com", "admin", "Admin User");
+      setEmail("admin@potentialhub.com");
+      setPassword("Testimony");
     } else {
-      login("staff@potentialhub.com", "staff", "Lab Staff");
+      setEmail("staff@potentialhub.com");
+      setPassword("staff123");
     }
-    setLocation("/dashboard");
   };
 
   return (
@@ -47,15 +48,11 @@ export default function LoginPage() {
       <div className="hidden lg:flex flex-col w-1/2 bg-sidebar border-r border-border relative overflow-hidden p-12">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[100px] rounded-full" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[100px] rounded-full" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_10%,transparent_100%)]" />
         </div>
-
         <div className="z-10 flex items-center gap-2 text-primary mb-auto">
           <Cpu className="h-8 w-8" />
           <span className="font-bold tracking-tight text-xl">PIH SYSTEM</span>
         </div>
-
         <div className="z-10 flex-1 flex flex-col justify-center">
           <h1 className="text-3xl font-bold tracking-tight">
             Precision Inventory <br />
@@ -67,7 +64,7 @@ export default function LoginPage() {
           <ul className="mt-8 space-y-3">
             <li className="flex items-center gap-3 text-sm font-medium">
               <Check className="h-5 w-5 text-emerald-500" />
-              Real-time low stock alerts
+              Real-time inventory tracking
             </li>
             <li className="flex items-center gap-3 text-sm font-medium">
               <Check className="h-5 w-5 text-emerald-500" />
@@ -75,11 +72,10 @@ export default function LoginPage() {
             </li>
             <li className="flex items-center gap-3 text-sm font-medium">
               <Check className="h-5 w-5 text-emerald-500" />
-              QR code asset tagging
+              Sales and payment management
             </li>
           </ul>
         </div>
-
         <div className="z-10 mt-auto text-xs font-mono text-muted-foreground/50">
           v1.0.0 · Potential Innovation Hub
         </div>
@@ -94,11 +90,9 @@ export default function LoginPage() {
             </div>
             <h2 className="text-2xl font-bold tracking-tight lg:hidden">PIH System</h2>
             <h2 className="text-2xl font-bold tracking-tight hidden lg:block">Welcome back</h2>
-            <p className="text-muted-foreground">
-              Sign in to your account to continue
-            </p>
+            <p className="text-muted-foreground">Sign in to your account to continue</p>
           </div>
-          
+
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
@@ -131,20 +125,20 @@ export default function LoginPage() {
             <div className="pt-4 space-y-3">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-center">Demo Accounts</p>
               <div className="grid grid-cols-2 gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="text-xs h-auto py-2 flex flex-col items-center gap-1 border-primary/20 hover:border-primary/50 hover:bg-primary/5" 
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-xs h-auto py-2 flex flex-col items-center gap-1 border-primary/20 hover:border-primary/50 hover:bg-primary/5"
                   onClick={() => fillDemo("admin")}
                   data-testid="button-demo-admin"
                 >
                   <span className="font-semibold text-primary">Admin Role</span>
                   <span className="text-[10px] text-muted-foreground font-mono">admin@potentialhub.com</span>
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="text-xs h-auto py-2 flex flex-col items-center gap-1 border-border hover:border-foreground/30 hover:bg-muted/50" 
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-xs h-auto py-2 flex flex-col items-center gap-1 border-border hover:border-foreground/30 hover:bg-muted/50"
                   onClick={() => fillDemo("staff")}
                   data-testid="button-demo-staff"
                 >
@@ -153,9 +147,9 @@ export default function LoginPage() {
                 </Button>
               </div>
             </div>
-            
-            <Button type="submit" className="w-full mt-6" size="lg" data-testid="button-login-submit">
-              Sign In
+
+            <Button type="submit" className="w-full mt-6" size="lg" data-testid="button-login-submit" disabled={loading}>
+              {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
         </div>
