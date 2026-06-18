@@ -1,50 +1,44 @@
 import { useState } from "react";
+import { useInventory } from "@/context/InventoryContext";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Cpu, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { auth } from "@/lib/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { useInventory } from "@/context/InventoryContext";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { login } = useInventory();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { login } = useInventory();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-        const role = email.startsWith("admin") ? "admin" : "staff";
-        const name = role === "admin" ? "Admin User" : "Lab Staff";
-        login(email, role, name);
+
+    if (email === "admin@potentialhub.com" && password === "Testimony") {
+      login(email, "admin", "Admin User");
       setLocation("/dashboard");
-    } catch (error: any) {
+    } else if (email === "staff@potentialhub.com" && password === "staff123") {
+      login(email, "staff", "Lab Staff");
+      setLocation("/dashboard");
+    } else {
       toast({
         title: "Authentication Failed",
         description: "Invalid credentials provided.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   const fillDemo = (type: "admin" | "staff") => {
     if (type === "admin") {
-      setEmail("admin@potentialhub.com");
-      setPassword("Testimony");
+      login("admin@potentialhub.com", "admin", "Admin User");
     } else {
-      setEmail("staff@potentialhub.com");
-      setPassword("staff123");
+      login("staff@potentialhub.com", "staff", "Lab Staff");
     }
+    setLocation("/dashboard");
   };
 
   return (
@@ -53,11 +47,15 @@ export default function LoginPage() {
       <div className="hidden lg:flex flex-col w-1/2 bg-sidebar border-r border-border relative overflow-hidden p-12">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[100px] rounded-full" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[100px] rounded-full" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_10%,transparent_100%)]" />
         </div>
+
         <div className="z-10 flex items-center gap-2 text-primary mb-auto">
           <Cpu className="h-8 w-8" />
           <span className="font-bold tracking-tight text-xl">PIH SYSTEM</span>
         </div>
+
         <div className="z-10 flex-1 flex flex-col justify-center">
           <h1 className="text-3xl font-bold tracking-tight">
             Precision Inventory <br />
@@ -69,7 +67,7 @@ export default function LoginPage() {
           <ul className="mt-8 space-y-3">
             <li className="flex items-center gap-3 text-sm font-medium">
               <Check className="h-5 w-5 text-emerald-500" />
-              Real-time inventory tracking
+              Real-time low stock alerts
             </li>
             <li className="flex items-center gap-3 text-sm font-medium">
               <Check className="h-5 w-5 text-emerald-500" />
@@ -77,10 +75,11 @@ export default function LoginPage() {
             </li>
             <li className="flex items-center gap-3 text-sm font-medium">
               <Check className="h-5 w-5 text-emerald-500" />
-              Sales and payment management
+              QR code asset tagging
             </li>
           </ul>
         </div>
+
         <div className="z-10 mt-auto text-xs font-mono text-muted-foreground/50">
           v1.0.0 · Potential Innovation Hub
         </div>
@@ -95,7 +94,9 @@ export default function LoginPage() {
             </div>
             <h2 className="text-2xl font-bold tracking-tight lg:hidden">PIH System</h2>
             <h2 className="text-2xl font-bold tracking-tight hidden lg:block">Welcome back</h2>
-            <p className="text-muted-foreground">Sign in to your account to continue</p>
+            <p className="text-muted-foreground">
+              Sign in to your account to continue
+            </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -153,8 +154,8 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full mt-6" size="lg" data-testid="button-login-submit" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+            <Button type="submit" className="w-full mt-6" size="lg" data-testid="button-login-submit">
+              Sign In
             </Button>
           </form>
         </div>
