@@ -5,6 +5,15 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
 export interface Product {
   id: string;
   name: string;
@@ -297,10 +306,7 @@ const InventoryContext = createContext<InventoryContextType | undefined>(
 );
 
 export function InventoryProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem("inventory_products");
-    return saved ? JSON.parse(saved) : seedProducts;
-  });
+  const [products, setProducts] = useState<Product[]>(seedProducts);
 
   const [activityLog, setActivityLog] = useState<ActivityLog[]>(() => {
     const saved = localStorage.getItem("inventory_activity");
@@ -320,8 +326,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    localStorage.setItem("inventory_products", JSON.stringify(products));
-  }, [products]);
+    getDocs(collection(db, "products")).then((snapshot) => {
+      if (!snapshot.empty) {
+        setProducts(snapshot.docs.map((d) => d.data() as Product));
+      } else {
+        seedProducts.forEach((p) => setDoc(doc(db, "products", p.id), p));
+      }
+    });
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("inventory_activity", JSON.stringify(activityLog));
@@ -370,6 +382,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       lastUpdated: new Date().toISOString(),
     };
     setProducts((prev) => [...prev, newProduct]);
+    setDoc(doc(db, "products", newProduct.id), newProduct);
     logActivity("added", newProduct.id, newProduct.name);
   };
 
@@ -377,48 +390,47 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     id: string,
     updates: Partial<Omit<Product, "id" | "lastUpdated">>,
   ) => {
+    const lastUpdated = new Date().toISOString();
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id === id) {
-          const updated = {
-            ...p,
-            ...updates,
-            lastUpdated: new Date().toISOString(),
-          };
+          const updated = { ...p, ...updates, lastUpdated };
           logActivity("edited", p.id, updated.name);
           return updated;
         }
         return p;
       }),
     );
+    updateDoc(doc(db, "products", id), { ...updates, lastUpdated });
   };
 
   const deleteProduct = (id: string) => {
     const product = products.find((p) => p.id === id);
     if (product) {
       setProducts((prev) => prev.filter((p) => p.id !== id));
+      deleteDoc(doc(db, "products", id));
       logActivity("deleted", id, product.name);
     }
   };
 
   const adjustQuantity = (id: string, delta: number) => {
+    const lastUpdated = new Date().toISOString();
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id === id) {
-          const newQty = Math.max(0, p.quantity + delta);
-
-          const updated = {
-            ...p,
-            quantity: newQty,
-            lastUpdated: new Date().toISOString(),
-          };
-
+          const quantity = Math.max(0, p.quantity + delta);
+          const updated = { ...p, quantity, lastUpdated };
           logActivity("adjusted", p.id, updated.name);
           return updated;
         }
         return p;
       }),
     );
+    const product = products.find((p) => p.id === id);
+    if (product) {
+      const quantity = Math.max(0, product.quantity + delta);
+      updateDoc(doc(db, "products", id), { quantity, lastUpdated });
+    }
   };
 
   const markReordered = (id: string, ordered: boolean) => {
