@@ -7,6 +7,7 @@ import { Cpu, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { useInventory } from "@/context/InventoryContext";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,12 +15,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { login } = useInventory();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
+        const role = email.startsWith("admin") ? "admin" : "staff";
+        const name = role === "admin" ? "Admin User" : "Lab Staff";
+        login(email, role, name);
       setLocation("/dashboard");
     } catch (error: any) {
       toast({
