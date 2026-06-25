@@ -1,3 +1,4 @@
+
 {
   "extends": "../../tsconfig.base.json",
   "include": ["src/**/*"],
@@ -15,10 +16,5 @@
     "paths": {
       "@/*": ["./src/*"]
     }
-  },
-  "references": [
-    {
-      "path": "../../lib/api-client-react"
-    }
-  ]
+  }
 }

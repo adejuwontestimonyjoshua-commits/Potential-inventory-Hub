@@ -40,7 +40,7 @@ export function ActivityFeed() {
                   <span className="font-medium text-foreground">{log.productName}</span>
                 </p>
                 <div className="flex items-center text-xs text-muted-foreground font-mono">
-                  <span>{log.productId}</span>
+                  <span>{log.productName}</span>
                   <span className="mx-2">•</span>
                   <span>{formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}</span>
                 </div>

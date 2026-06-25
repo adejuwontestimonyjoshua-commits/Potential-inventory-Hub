@@ -4,41 +4,52 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Cpu, Check } from "lucide-react";
+import { Cpu, Check, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const { login } = useInventory();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (email === "admin@potentialhub.com" && password === "Testimony") {
-      login(email, "admin", "Admin User");
+    setLoading(true);
+    try {
+      await login(email, password);
       setLocation("/dashboard");
-    } else if (email === "staff@potentialhub.com" && password === "staff123") {
-      login(email, "staff", "Lab Staff");
-      setLocation("/dashboard");
-    } else {
+    } catch (err: any) {
       toast({
         title: "Authentication Failed",
-        description: "Invalid credentials provided.",
+        description: err?.message ?? "Invalid credentials provided.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fillDemo = (type: "admin" | "staff") => {
-    if (type === "admin") {
-      login("admin@potentialhub.com", "admin", "Admin User");
-    } else {
-      login("staff@potentialhub.com", "staff", "Lab Staff");
+  const fillDemo = async (type: "admin" | "staff") => {
+    setLoading(true);
+    try {
+      if (type === "admin") {
+        await login("admin@potentialhub.com", "Testimony");
+      } else {
+        await login("staff@potentialhub.com", "staff123");
+      }
+      setLocation("/dashboard");
+    } catch (err: any) {
+      toast({
+        title: "Authentication Failed",
+        description: err?.message ?? "Could not sign in with demo account.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-    setLocation("/dashboard");
   };
 
   return (
@@ -94,9 +105,7 @@ export default function LoginPage() {
             </div>
             <h2 className="text-2xl font-bold tracking-tight lg:hidden">PIH System</h2>
             <h2 className="text-2xl font-bold tracking-tight hidden lg:block">Welcome back</h2>
-            <p className="text-muted-foreground">
-              Sign in to your account to continue
-            </p>
+            <p className="text-muted-foreground">Sign in to your account to continue</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -111,12 +120,11 @@ export default function LoginPage() {
                 className="bg-background"
                 data-testid="input-login-email"
                 required
+                disabled={loading}
               />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-              </div>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -125,11 +133,14 @@ export default function LoginPage() {
                 className="bg-background"
                 data-testid="input-login-password"
                 required
+                disabled={loading}
               />
             </div>
 
             <div className="pt-4 space-y-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-center">Demo Accounts</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-center">
+                Demo Accounts
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   type="button"
@@ -137,9 +148,12 @@ export default function LoginPage() {
                   className="text-xs h-auto py-2 flex flex-col items-center gap-1 border-primary/20 hover:border-primary/50 hover:bg-primary/5"
                   onClick={() => fillDemo("admin")}
                   data-testid="button-demo-admin"
+                  disabled={loading}
                 >
                   <span className="font-semibold text-primary">Admin Role</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">admin@potentialhub.com</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    admin@potentialhub.com
+                  </span>
                 </Button>
                 <Button
                   type="button"
@@ -147,15 +161,31 @@ export default function LoginPage() {
                   className="text-xs h-auto py-2 flex flex-col items-center gap-1 border-border hover:border-foreground/30 hover:bg-muted/50"
                   onClick={() => fillDemo("staff")}
                   data-testid="button-demo-staff"
+                  disabled={loading}
                 >
                   <span className="font-semibold">Staff Role</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">staff@potentialhub.com</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    staff@potentialhub.com
+                  </span>
                 </Button>
               </div>
             </div>
 
-            <Button type="submit" className="w-full mt-6" size="lg" data-testid="button-login-submit">
-              Sign In
+            <Button
+              type="submit"
+              className="w-full mt-6"
+              size="lg"
+              data-testid="button-login-submit"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in…
+                </>
+              ) : (
+                "Sign In"
+              )}
             </Button>
           </form>
         </div>

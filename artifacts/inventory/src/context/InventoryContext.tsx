@@ -1,46 +1,30 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
-import { db } from "@/lib/firebase";
-import {
-  collection,
-  getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
+import { createContext, useContext, useState, useEffect } from "react";
+
 export interface Product {
   id: string;
   name: string;
   category: string;
-  unitPrice: number;
   quantity: number;
   minThreshold: number;
+  unitPrice: number;
   storageLocation: string;
-  imageUrl?: string;
   lastUpdated: string;
+  imageUrl?: string;
 }
 
 export interface ActivityLog {
   id: string;
-  action: "added" | "edited" | "deleted" | "adjusted";
+  action: string;
+  performedBy: string;
   productId: string;
   productName: string;
   timestamp: string;
-  performedBy: string;
 }
 
-export type Role = "admin" | "staff" | null;
-
 export interface User {
-  email: string;
-  role: Role;
   name: string;
+  email: string;
+  role: "admin" | "staff";
 }
 
 interface InventoryContextType {
@@ -48,396 +32,153 @@ interface InventoryContextType {
   activityLog: ActivityLog[];
   currentUser: User | null;
   reorderStatus: Record<string, boolean>;
-  login: (email: string, role: Role, name: string) => void;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  addProduct: (product: Omit<Product, "id" | "lastUpdated">) => void;
-  updateProduct: (
-    id: string,
-    product: Partial<Omit<Product, "id" | "lastUpdated">>,
-  ) => void;
+  addProduct: (product: Partial<Product>) => void;
+  updateProduct: (id: string, updates: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
-  adjustQuantity: (id: string, delta: number) => void;
+  adjustQuantity: (id: string, amount: number) => void;
   markReordered: (id: string, ordered: boolean) => void;
 }
 
-const seedProducts: Product[] = [
-  {
-    id: "PRD-001",
-    name: "Arduino Uno",
-    category: "Microcontroller",
-    unitPrice: 8.5,
-    quantity: 45,
-    minThreshold: 10,
-    storageLocation: "Shelf A-1",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-002",
-    name: "Arduino Nano",
-    category: "Microcontroller",
-    unitPrice: 6.0,
-    quantity: 30,
-    minThreshold: 10,
-    storageLocation: "Shelf A-1",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-003",
-    name: "ESP32",
-    category: "Microcontroller",
-    unitPrice: 5.5,
-    quantity: 60,
-    minThreshold: 15,
-    storageLocation: "Shelf A-2",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-004",
-    name: "ESP8266",
-    category: "Microcontroller",
-    unitPrice: 3.5,
-    quantity: 8,
-    minThreshold: 10,
-    storageLocation: "Shelf A-2",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-005",
-    name: "AI Camera Module",
-    category: "Sensor",
-    unitPrice: 22.0,
-    quantity: 12,
-    minThreshold: 5,
-    storageLocation: "Shelf B-1",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-006",
-    name: "Breadboard",
-    category: "Breadboard",
-    unitPrice: 2.5,
-    quantity: 80,
-    minThreshold: 20,
-    storageLocation: "Shelf C-1",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-007",
-    name: "Mini Breadboard",
-    category: "Breadboard",
-    unitPrice: 1.5,
-    quantity: 3,
-    minThreshold: 15,
-    storageLocation: "Shelf C-1",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-008",
-    name: "Vero Board",
-    category: "Breadboard",
-    unitPrice: 3.0,
-    quantity: 25,
-    minThreshold: 10,
-    storageLocation: "Shelf C-2",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-009",
-    name: "Male-to-Male Jumper Wires",
-    category: "Wiring",
-    unitPrice: 1.2,
-    quantity: 200,
-    minThreshold: 50,
-    storageLocation: "Shelf D-1",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-010",
-    name: "Male-to-Female Jumper Wires",
-    category: "Wiring",
-    unitPrice: 1.2,
-    quantity: 150,
-    minThreshold: 50,
-    storageLocation: "Shelf D-1",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-011",
-    name: "Female-to-Female Jumper Wires",
-    category: "Wiring",
-    unitPrice: 1.2,
-    quantity: 6,
-    minThreshold: 50,
-    storageLocation: "Shelf D-1",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-012",
-    name: "SG90 Servo Motor",
-    category: "Motor",
-    unitPrice: 4.0,
-    quantity: 35,
-    minThreshold: 10,
-    storageLocation: "Shelf E-1",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-013",
-    name: "MG996R Servo Motor",
-    category: "Motor",
-    unitPrice: 9.0,
-    quantity: 18,
-    minThreshold: 5,
-    storageLocation: "Shelf E-1",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-014",
-    name: "HC-SR04 Ultrasonic",
-    category: "Sensor",
-    unitPrice: 2.5,
-    quantity: 22,
-    minThreshold: 8,
-    storageLocation: "Shelf B-2",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-015",
-    name: "DHT11 Sensor",
-    category: "Sensor",
-    unitPrice: 2.0,
-    quantity: 4,
-    minThreshold: 8,
-    storageLocation: "Shelf B-2",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-016",
-    name: "PIR Motion Sensor",
-    category: "Sensor",
-    unitPrice: 3.5,
-    quantity: 14,
-    minThreshold: 5,
-    storageLocation: "Shelf B-3",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-017",
-    name: "16x2 LCD Display",
-    category: "Display",
-    unitPrice: 5.5,
-    quantity: 20,
-    minThreshold: 5,
-    storageLocation: "Shelf F-1",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-018",
-    name: "Relay Module",
-    category: "Other",
-    unitPrice: 3.0,
-    quantity: 9,
-    minThreshold: 8,
-    storageLocation: "Shelf G-1",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-019",
-    name: "DC Motor",
-    category: "Motor",
-    unitPrice: 4.5,
-    quantity: 30,
-    minThreshold: 10,
-    storageLocation: "Shelf E-2",
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: "PRD-020",
-    name: "L298N Motor Driver",
-    category: "Other",
-    unitPrice: 5.0,
-    quantity: 11,
-    minThreshold: 5,
-    storageLocation: "Shelf G-2",
-    lastUpdated: new Date().toISOString(),
-  },
-];
+const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
-const seedActivityLog: ActivityLog[] = Array.from({ length: 40 })
-  .map((_, i) => {
-    const isAdded = i >= 32;
-    const isEdited = i >= 24 && i < 32;
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
-    let action: "added" | "edited" | "adjusted" = "adjusted";
-    if (isAdded) action = "added";
-    else if (isEdited) action = "edited";
-
-    const products = [
-      { id: "PRD-001", name: "Arduino Uno" },
-      { id: "PRD-003", name: "ESP32" },
-      { id: "PRD-006", name: "Breadboard" },
-      { id: "PRD-009", name: "Male-to-Male Jumper Wires" },
-      { id: "PRD-002", name: "Arduino Nano" },
-      { id: "PRD-012", name: "SG90 Servo Motor" },
-      { id: "PRD-017", name: "16x2 LCD Display" },
-      { id: "PRD-005", name: "AI Camera Module" },
-    ];
-
-    const product = isAdded ? products[i - 32] : products[i % products.length];
-    const offsetMs = isAdded
-      ? 30 * 24 * 60 * 60 * 1000
-      : Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000);
-
-    return {
-      id: `ACT-s${String(i).padStart(3, "0")}`,
-      action,
-      productId: product.id,
-      productName: product.name,
-      timestamp: new Date(Date.now() - offsetMs).toISOString(),
-      performedBy: i % 3 === 0 ? "Admin User" : "Lab Staff",
-    };
-  })
-  .sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+export const InventoryProvider = ({ children }: { children: React.ReactNode }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(() =>
+    loadFromStorage<User | null>("pih_user", null)
   );
 
-const InventoryContext = createContext<InventoryContextType | undefined>(
-  undefined,
-);
-
-export function InventoryProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(seedProducts);
-
-  const [activityLog, setActivityLog] = useState<ActivityLog[]>(() => {
-    const saved = localStorage.getItem("inventory_activity");
-    return saved ? JSON.parse(saved) : seedActivityLog;
-  });
-
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem("inventory_user");
-    return saved ? JSON.parse(saved) : null;
-  });
-
-  const [reorderStatus, setReorderStatus] = useState<Record<string, boolean>>(
-    () => {
-      const s = localStorage.getItem("inventory_reorder");
-      return s ? JSON.parse(s) : {};
-    },
+  const [products, setProducts] = useState<Product[]>(() =>
+    loadFromStorage<Product[]>("pih_products", [])
   );
 
-  useEffect(() => {
-    getDocs(collection(db, "products")).then((snapshot) => {
-      if (!snapshot.empty) {
-        setProducts(snapshot.docs.map((d) => d.data() as Product));
-      } else {
-        seedProducts.forEach((p) => setDoc(doc(db, "products", p.id), p));
-      }
-    });
-  }, []);
+  const [activityLog, setActivityLog] = useState<ActivityLog[]>(() =>
+    loadFromStorage<ActivityLog[]>("pih_activityLog", [])
+  );
 
-  useEffect(() => {
-    localStorage.setItem("inventory_activity", JSON.stringify(activityLog));
-  }, [activityLog]);
+  const [reorderStatus, setReorderStatus] = useState<Record<string, boolean>>(() =>
+    loadFromStorage<Record<string, boolean>>("pih_reorderStatus", {})
+  );
 
+  // Persist to localStorage on every state change
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem("inventory_user", JSON.stringify(currentUser));
+      localStorage.setItem("pih_user", JSON.stringify(currentUser));
     } else {
-      localStorage.removeItem("inventory_user");
+      localStorage.removeItem("pih_user");
     }
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem("inventory_reorder", JSON.stringify(reorderStatus));
+    localStorage.setItem("pih_products", JSON.stringify(products));
+  }, [products]);
+
+  useEffect(() => {
+    localStorage.setItem("pih_activityLog", JSON.stringify(activityLog));
+  }, [activityLog]);
+
+  useEffect(() => {
+    localStorage.setItem("pih_reorderStatus", JSON.stringify(reorderStatus));
   }, [reorderStatus]);
 
-  const login = (email: string, role: Role, name: string) => {
-    setCurrentUser({ email, role, name });
+  // --- Auth ---
+
+  const login = async (email: string, password: string) => {
+    if (email === "admin@potentialhub.com" && password === "Testimony") {
+      setCurrentUser({ name: "Admin", email, role: "admin" });
+    } else if (email === "staff@potentialhub.com" && password === "staff123") {
+      setCurrentUser({ name: "Staff", email, role: "staff" });
+    } else {
+      throw new Error("Invalid email or password.");
+    }
   };
 
   const logout = () => {
     setCurrentUser(null);
   };
 
+  // --- Activity logging helper ---
+
   const logActivity = (
-    action: ActivityLog["action"],
+    action: string,
     productId: string,
-    productName: string,
+    productName: string
   ) => {
-    const newLog: ActivityLog = {
-      id: `ACT-${Date.now()}`,
+    const entry: ActivityLog = {
+      id: Date.now().toString(),
       action,
+      performedBy: currentUser?.name ?? "System",
       productId,
       productName,
       timestamp: new Date().toISOString(),
-      performedBy: currentUser?.name || "System",
     };
-    setActivityLog((prev) => [newLog, ...prev].slice(0, 50));
+    setActivityLog((prev) => [entry, ...prev].slice(0, 100)); // keep last 100
   };
 
-  const addProduct = (product: Omit<Product, "id" | "lastUpdated">) => {
+  // --- Product CRUD ---
+
+  const addProduct = (product: Partial<Product>) => {
     const newProduct: Product = {
-      ...product,
-      id: `PRD-${Date.now().toString().slice(-4)}`,
+      id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+      name: product.name ?? "Unnamed Product",
+      category: product.category ?? "Uncategorized",
+      quantity: product.quantity ?? 0,
+      minThreshold: product.minThreshold ?? 5,
+      unitPrice: product.unitPrice ?? 0,
+      storageLocation: product.storageLocation ?? "",
       lastUpdated: new Date().toISOString(),
+      imageUrl: product.imageUrl,
     };
     setProducts((prev) => [...prev, newProduct]);
-    setDoc(doc(db, "products", newProduct.id), newProduct);
-    logActivity("added", newProduct.id, newProduct.name);
+    logActivity("Added product", newProduct.id, newProduct.name);
   };
 
-  const updateProduct = (
-    id: string,
-    updates: Partial<Omit<Product, "id" | "lastUpdated">>,
-  ) => {
-    const lastUpdated = new Date().toISOString();
+  const updateProduct = (id: string, updates: Partial<Product>) => {
     setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === id) {
-          const updated = { ...p, ...updates, lastUpdated };
-          logActivity("edited", p.id, updated.name);
-          return updated;
-        }
-        return p;
-      }),
+      prev.map((p) =>
+        p.id === id
+          ? { ...p, ...updates, lastUpdated: new Date().toISOString() }
+          : p
+      )
     );
-    updateDoc(doc(db, "products", id), { ...updates, lastUpdated });
+    const product = products.find((p) => p.id === id);
+    logActivity("Updated product", id, product?.name ?? id);
   };
 
   const deleteProduct = (id: string) => {
     const product = products.find((p) => p.id === id);
-    if (product) {
-      setProducts((prev) => prev.filter((p) => p.id !== id));
-      deleteDoc(doc(db, "products", id));
-      logActivity("deleted", id, product.name);
-    }
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+    logActivity("Deleted product", id, product?.name ?? id);
   };
 
-  const adjustQuantity = (id: string, delta: number) => {
-    const lastUpdated = new Date().toISOString();
+  const adjustQuantity = (id: string, amount: number) => {
     setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === id) {
-          const quantity = Math.max(0, p.quantity + delta);
-          const updated = { ...p, quantity, lastUpdated };
-          logActivity("adjusted", p.id, updated.name);
-          return updated;
-        }
-        return p;
-      }),
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              quantity: Math.max(0, p.quantity + amount),
+              lastUpdated: new Date().toISOString(),
+            }
+          : p
+      )
     );
     const product = products.find((p) => p.id === id);
-    if (product) {
-      const quantity = Math.max(0, product.quantity + delta);
-      updateDoc(doc(db, "products", id), { quantity, lastUpdated });
-    }
+    const direction = amount >= 0 ? `+${amount}` : `${amount}`;
+    logActivity(`Adjusted quantity (${direction})`, id, product?.name ?? id);
   };
 
   const markReordered = (id: string, ordered: boolean) => {
-    setReorderStatus((prev) => ({
-      ...prev,
-      [id]: ordered,
-    }));
+    setReorderStatus((prev) => ({ ...prev, [id]: ordered }));
   };
 
   return (
@@ -459,7 +200,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       {children}
     </InventoryContext.Provider>
   );
-}
+};
 
 export const useInventory = () => {
   const context = useContext(InventoryContext);
@@ -468,3 +209,7 @@ export const useInventory = () => {
   }
   return context;
 };
+
+// Currency formatter — use this everywhere prices are displayed
+export const formatNaira = (value: number): string =>
+  new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(value);
