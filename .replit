@@ -1,8 +1,10 @@
 modules = ["nodejs-24"]
 
 [deployment]
-router = "application"
 deploymentTarget = "autoscale"
+build = ["pnpm", "run", "build"]
+run = ["pnpm", "run", "start"]
+router = "application"
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
