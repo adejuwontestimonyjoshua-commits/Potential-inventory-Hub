@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "build": "cd artifacts/inventory && pnpm run build",
+    "build": "cd artifacts/inventory && pnpm run build && cd ../api-server && pnpm run build",
     "start": "cd artifacts/api-server && pnpm run start",
     "dev": "cd artifacts/inventory && npm run dev",
     "typecheck:libs": "tsc --build",

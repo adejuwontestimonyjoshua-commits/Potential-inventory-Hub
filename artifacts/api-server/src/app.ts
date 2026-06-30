@@ -34,17 +34,27 @@ app.use(express.urlencoded({ extended: true }));
 // API routes
 app.use("/api", router);
 
-// Serve React frontend
+// Health endpoint
+app.get("/api", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+  });
+});
+
+// Frontend build location
 const frontendPath = path.resolve(
   process.cwd(),
   "../inventory/dist"
 );
 
+// Static files
 app.use(express.static(frontendPath));
 
-// React SPA fallback
-app.get("/{*splat}", (_req, res) => {
-  res.sendFile(path.join(frontendPath, "index.html"));
+// SPA fallback ONLY for non-api routes
+app.get(/^\/(?!api).*/, (_req, res) => {
+  res.sendFile(
+    path.join(frontendPath, "index.html")
+  );
 });
 
 export default app;
